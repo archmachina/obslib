@@ -5,3 +5,5 @@ from .obslib import parse_bool
 from .obslib import eval_vars
 from .obslib import Session
 
+from .exception import *
+

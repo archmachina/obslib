@@ -96,6 +96,7 @@ def yaml_loader(val):
     return (False, None)
 
 def coerce_value(types, val, *, loader=yaml_loader):
+    validate(callable(loader) or loader is None, "Invalid loader callback provided to coerce_value")
 
     # Just return the value if there is no type
     if types is None:
@@ -130,10 +131,11 @@ def coerce_value(types, val, *, loader=yaml_loader):
 
         # None of the above have worked, try using the loader to see if it
         # becomes the correct type
-        success, parsed = loader(val)
+        if loader is not None:
+            success, parsed = loader(val)
 
-        if success and isinstance(parsed, type_item):
-            return parsed
+            if success and isinstance(parsed, type_item):
+                return parsed
 
     raise exception.OBSConversionException(f"Could not convert value to target types: {types}")
 
