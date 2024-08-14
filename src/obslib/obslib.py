@@ -1,6 +1,7 @@
 
 import jinja2
 import logging
+import yaml
 import obslib.exception as exception
 
 logger = logging.getLogger(__name__)
@@ -78,8 +79,23 @@ def walk_object(root, callback, *, depth=-1, update=False):
 
     return root
 
+def yaml_loader(val):
 
-def coerce_value(types, val):
+    # Can only load from a string
+    if not isinstance(val, str):
+        return (False, None)
+
+    # Try loading document as yaml
+    try:
+        result = yaml.safe_load(val)
+        return (True, result)
+
+    except yaml.YAMLError as e:
+        pass
+
+    return (False, None)
+
+def coerce_value(types, val, *, loader=yaml_loader):
 
     # Just return the value if there is no type
     if types is None:
@@ -93,8 +109,6 @@ def coerce_value(types, val):
     # Make sure all elements of the types tuple are a type
     validate(isinstance(types, tuple) and all(isinstance(x, type) for x in types),
         "Invalid types passed to coerce_value")
-
-    parsed = None
 
     for type_item in types:
         # Return val if it is already the correct type
@@ -114,17 +128,12 @@ def coerce_value(types, val):
 
             return str(val)
 
-        # None of the above have worked, try parsing as yaml to see if it
+        # None of the above have worked, try using the loader to see if it
         # becomes the correct type
-        if isinstance(val, str):
-            try:
-                if parsed is None:
-                    parsed = yaml_load(val)
+        success, parsed = loader(val)
 
-                if isinstance(parsed, type_item):
-                    return parsed
-            except yaml.YAMLError as e:
-                pass
+        if success and isinstance(parsed, type_item):
+            return parsed
 
     raise exception.OBSConversionException(f"Could not convert value to target types: {types}")
 
