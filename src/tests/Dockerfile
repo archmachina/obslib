@@ -1,19 +1,21 @@
-FROM python:3.12.2-slim-bullseye
+ARG IMAGE=python:3.12.2-slim-bullseye
+FROM $IMAGE
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /work
 ENV HOME=/work
 
-COPY requirements.txt /work
+COPY tests/requirements.txt /work
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install -r /work/requirements.txt
 
 COPY obslib /work/modules/obslib/
+COPY tests /work/tests
 ENV PYTHONPATH=/work/modules
 
 ARG BUILD_VERSION
 RUN echo "${BUILD_VERSION}" > /build_version.txt
 
-COPY entrypoint /entrypoint
+COPY tests/entrypoint /entrypoint
 ENTRYPOINT [ "/entrypoint" ]

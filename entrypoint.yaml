@@ -146,11 +146,20 @@ steps:
         docker push "${REGISTRY_IMAGE}:${TAG}"
       done
 
+  test:
+    type: command
+    interpreter: /bin/bash
+    command: dfbar -f src/tests/Dockerfile src
+
 actions:
   clean:
     steps:
       - clean_dist
       - clean_env
+
+  test:
+    steps:
+      - test
 
   build:
     steps:
@@ -169,7 +178,7 @@ actions:
       # Call parse_semver explicitly here so that docker_build_version can include it in the BUILD_VERSION var
       - parse_semver
       - python_build
-      - docker_build
+      - test
 
   # Steps to perform when building on main branch
   push_branch_main:
@@ -182,6 +191,7 @@ actions:
       # Call parse_semver explicitly here so that docker_build_version can include it in the BUILD_VERSION var
       - parse_semver
       - python_build
+      - test
       - docker_registry_push
 
   # Steps to perform when building from a git tag v*
