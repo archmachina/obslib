@@ -78,6 +78,57 @@ class TestObsCoerceLoader:
             obslib.coerce_value(LoaderTest, "test")
 
     def test_custom_loader(self):
-        res = obslib.coerce_value(LoaderTest, "test123", loader=lambda x: (True, LoaderTest(x)))
-        assert(res.val == "test123")
+        text = "test123"
+        res = obslib.coerce_value(LoaderTest, text, loader=lambda x: (True, LoaderTest(x)))
+        assert(res.val == text)
+
+class TestObsCoerceYaml:
+    def test_yaml_dict(self):
+        result = obslib.coerce_value(dict, "{ 'a': 1, 'b': 2 }")
+        assert(isinstance(result, dict))
+        assert(result["a"] == 1 and result["b"] == 2)
+        assert(len(result.keys()) == 2)
+
+    def test_yaml_list(self):
+        result = obslib.coerce_value(list, "[1, 2, 3]")
+        assert(isinstance(result, list))
+        assert(result[0] == 1 and result[1] == 2 and result[2] == 3)
+        assert(len(result) == 3)
+
+    def test_yaml_dict_invalid(self):
+        with pytest.raises(obslib.OBSConversionException):
+            result = obslib.coerce_value(dict, "{ 'a': 1, 'b': 2")
+
+    def test_yaml_list_invalid(self):
+        with pytest.raises(obslib.OBSConversionException):
+            result = obslib.coerce_value(list, "[1, 2, 3")
+
+    def test_yaml_multiple_types1(self):
+        result = obslib.coerce_value((dict, list), "[1, 2, 3]")
+        assert(isinstance(result, list))
+        assert(result[0] == 1 and result[1] == 2 and result[2] == 3)
+        assert(len(result) == 3)
+
+    def test_yaml_multiple_types2(self):
+        result = obslib.coerce_value((list, dict), "{ 'a': 1, 'b': 2 }")
+        assert(isinstance(result, dict))
+        assert(result["a"] == 1 and result["b"] == 2)
+        assert(len(result.keys()) == 2)
+
+    def test_yaml_complex_type(self):
+        result = obslib.coerce_value(dict, "{ 'a': 1, 'b': [1, 2, 3], 'c': { 'a': 1, 'b': 'test' } }")
+        assert(isinstance(result, dict))
+        assert(len(result.keys()) == 3)
+
+        # Check 'a'
+        assert(result["a"] == 1)
+
+        # Check 'b'
+        assert(isinstance(result["b"], list))
+        assert(result["b"][0] == 1 and result["b"][1] == 2 and result["b"][2] == 3 and len(result["b"]) == 3)
+
+        # Check 'c'
+        assert(isinstance(result["c"], dict))
+        assert(len(result["c"].keys()) == 2)
+        assert(result["c"]["a"] == 1 and result["c"]["b"] == "test")
 
