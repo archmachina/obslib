@@ -40,7 +40,7 @@ def walk_object(root, callback, *, depth=-1, update=False):
         if level > 200:
             raise exception.OBSRecursionLimitException("Exceeded the maximum recursion depth limit")
 
-        if depth >= 0 and level > depth:
+        if depth >= 0 and level >= depth:
             # Ignore this object as it is too deep
             continue
 

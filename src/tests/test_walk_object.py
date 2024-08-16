@@ -85,7 +85,7 @@ class TestWalkObject:
 
             return x
 
-        newitem = obslib.walk_object(item, callback=update, update=True, depth=0)
+        newitem = obslib.walk_object(item, callback=update, update=True, depth=1)
 
         assert(id(item) == id(newitem))
 
@@ -110,6 +110,31 @@ class TestWalkObject:
             return x
 
         newitem = obslib.walk_object(item, callback=update, update=True, depth=1)
+
+        assert(id(item) == id(newitem))
+
+        assert(item["a"] == 4)
+        assert(item["b"]["c"] == 3)
+        assert(item["b"]["d"]["e"] == 4)
+
+    def test_complex_update_depth3(self):
+        item = {
+            "a": 2,
+            "b": {
+                "c": 3,
+                "d": {
+                    "e": 4
+                }
+            }
+        }
+
+        def update(x):
+            if isinstance(x, int):
+                return x * x
+
+            return x
+
+        newitem = obslib.walk_object(item, callback=update, update=True, depth=2)
 
         assert(id(item) == id(newitem))
 
