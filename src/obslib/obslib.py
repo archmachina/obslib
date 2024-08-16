@@ -2,7 +2,10 @@
 import jinja2
 import logging
 import yaml
+import copy
 import obslib.exception as exception
+
+from jinja2.meta import find_undeclared_variables
 
 logger = logging.getLogger(__name__)
 
