@@ -177,7 +177,7 @@ def eval_vars(source_vars:dict, environment:jinja2.Environment, inplace:bool=Fal
 
     working_vars = source_vars
     if not inplace:
-        working_vars = copy.deepcopy(source_vars)
+        working_vars = copy.copy(source_vars)
 
     # Create a map of keys to the vars the value references
     for key in working_vars:
