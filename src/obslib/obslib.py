@@ -263,21 +263,21 @@ def get_template_refs(template_str, environment:jinja2.Environment):
 
 class Session:
     def __init__(self, environment:jinja2.Environment, template_vars:dict):
-        util.validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to Session ctor")
-        util.validate(isinstance(template_vars, dict), "Invalid template vars passed to Session")
+        validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to Session ctor")
+        validate(isinstance(template_vars, dict), "Invalid template vars passed to Session")
 
         self._environment = environment
         self.vars = template_vars
 
     def resolve(self, value, types=None, *, template=True, depth=0):
-        util.validate(isinstance(template, bool), "Invalid value for template passed to resolve")
-        util.validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
+        validate(isinstance(template, bool), "Invalid value for template passed to resolve")
+        validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
 
         if template:
-            value = util.walk_object(value, lambda x: template_if_string(x), update=True, depth=depth)
+            value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars), update=True, depth=depth)
 
         if types is not None:
-            value = util.coerce_value(types, value)
+            value = coerce_value(types, value)
 
         return value
 
