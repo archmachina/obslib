@@ -160,7 +160,7 @@ def parse_bool(obj) -> bool:
     raise exception.OBSConversionException(f"Unparseable value ({obj}) passed to parse_bool")
 
 
-def eval_vars(source_vars:dict, environment:jinja2.Environment, inplace:bool=False, ignore_list:list=None):
+def eval_vars(source_vars:dict, environment:jinja2.Environment=None, inplace:bool=False, ignore_list:list=None):
     """
     Performs templating on the source dictionary and attempts to resolve variable references
     taking in to account nested references.
@@ -169,6 +169,11 @@ def eval_vars(source_vars:dict, environment:jinja2.Environment, inplace:bool=Fal
     validate(isinstance(inplace, bool), "Invalid inplace var provided to resolve_refs")
     validate(ignore_list is None or (all(isinstance(x, str) for x in ignore_list)),
         "Invalid ignore_list provided to resolve_refs")
+    validate(environment is None or isinstance(environment, jinja2.Environment), "Invalid environment passed to eval_vars")
+
+    # Create a default Jinja2 environment
+    if environment is None:
+        environment = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 
     if ignore_list is None:
         ignore_list = []
@@ -262,14 +267,18 @@ def get_template_refs(template_str, environment:jinja2.Environment):
 
 
 class Session:
-    def __init__(self, environment:jinja2.Environment, template_vars:dict):
-        validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to Session ctor")
+    def __init__(self, template_vars:dict, environment:jinja2.Environment=None):
         validate(isinstance(template_vars, dict), "Invalid template vars passed to Session")
+        validate(environment is None or isinstance(environment, jinja2.Environment), "Invalid environment passed to Session")
+
+        # Create a default Jinja2 environment
+        if environment is None:
+            environment = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 
         self._environment = environment
         self.vars = template_vars
 
-    def resolve(self, value, types=None, *, template=True, depth=0):
+    def resolve(self, value, types=None, *, template=True, depth=-1):
         validate(isinstance(template, bool), "Invalid value for template passed to resolve")
         validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
 
