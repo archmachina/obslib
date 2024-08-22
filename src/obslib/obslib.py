@@ -290,4 +290,22 @@ class Session:
 
         return value
 
+def extract_property(source, key, *, default=None, required=False):
+    validate(isinstance(source, dict), "Invalid source passed to extract_property. Must be a dict")
+    validate(isinstance(key, str), "Invalid key passed to extract_property")
+
+    if key not in source:
+        # Raise exception is the key isn't present, but required
+        if required:
+            raise KeyError(f'Missing key "{key}" in source or value is null')
+
+        # If the key is not present, return the default
+        return default
+
+    # Retrieve value
+    val = source.pop(key)
+    if val is None:
+        return default
+
+    return val
 
