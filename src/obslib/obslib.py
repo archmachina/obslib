@@ -98,7 +98,7 @@ def yaml_loader(val):
 
     return (False, None)
 
-def coerce_value(types, val, *, loader=yaml_loader):
+def coerce_value(val, types, *, loader=yaml_loader):
     validate(callable(loader) or loader is None, "Invalid loader callback provided to coerce_value")
 
     # Just return the value if there is no type
@@ -286,17 +286,17 @@ class Session:
             value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars), update=True, depth=depth)
 
         if types is not None:
-            value = coerce_value(types, value)
+            value = coerce_value(value, types)
 
         return value
 
-def extract_property(source, key, *, default=None, required=False):
+def extract_property(source, key, *, default=None, optional=False):
     validate(isinstance(source, dict), "Invalid source passed to extract_property. Must be a dict")
     validate(isinstance(key, str), "Invalid key passed to extract_property")
 
     if key not in source:
         # Raise exception is the key isn't present, but required
-        if required:
+        if not optional:
             raise KeyError(f'Missing key "{key}" in source or value is null')
 
         # If the key is not present, return the default
