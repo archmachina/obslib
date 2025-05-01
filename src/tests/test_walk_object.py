@@ -167,3 +167,14 @@ class TestWalkObject:
         assert(item["b"]["c"] == 3)
         assert(item["b"]["d"]["e"] == 4)
 
+    def test_none_root(self):
+        item = None
+
+        def update(x):
+            assert(x is None)
+
+        newitem = obslib.walk_object(item, callback=update, update=True)
+
+        assert(id(newitem) == id(item))
+        assert(newitem is None and item is None)
+

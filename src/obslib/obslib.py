@@ -18,7 +18,6 @@ def validate(val, message, extype=exception.OBSValidationException):
 
 
 def walk_object(root, callback, *, depth=-1, update=False):
-    validate(root is not None, "Invalid object supplied to walk_object")
     validate(callable(callback), "Invalid callback supplied to walk_object")
     validate(isinstance(update, bool), "Invalid update flag passed to walk_object")
     validate(isinstance(depth, int), "Invalid depth passed to walk_object")
