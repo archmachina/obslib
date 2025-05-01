@@ -289,9 +289,12 @@ class Session:
 
         return value
 
-def extract_property(source, key, *, default=None, optional=False):
+def extract_property(source, key, *, default=None, optional=False, replace_none=False):
     validate(isinstance(source, dict), "Invalid source passed to extract_property. Must be a dict")
     validate(isinstance(key, str), "Invalid key passed to extract_property")
+    validate(isinstance(optional, bool), "Invalid optional parameter to extract_property")
+    validate(isinstance(replace_none, bool), "Invalid replace_none parameter to extract_property")
+
 
     if key not in source:
         # Raise exception is the key isn't present, but required
@@ -303,7 +306,7 @@ def extract_property(source, key, *, default=None, optional=False):
 
     # Retrieve value
     val = source.pop(key)
-    if val is None:
+    if val is None and replace_none:
         return default
 
     return val
