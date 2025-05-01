@@ -74,3 +74,21 @@ class TestSession:
         result = session.resolve(value, dict)
         assert(result["a"] == 1 and result["b"] == 2 and result["c"] == 5)
 
+    def test_resolve6(self):
+        source_val = None
+
+        session = obslib.Session({})
+
+        result = session.resolve(source_val, types=(list, type(None)))
+
+        assert result is None
+
+    def test_resolve7(self):
+        source_val = None
+
+        session = obslib.Session({})
+
+        result = session.resolve(source_val, types=(list, type(None)), default=5)
+
+        assert result == 5
+
