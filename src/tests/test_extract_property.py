@@ -31,12 +31,40 @@ class TestExtractProperty:
         with pytest.raises(KeyError):
             value = obslib.extract_property(source, "prop2")
 
-    def test_optional_value(self):
+    def test_optional_value1(self):
         source = {
             "prop1": 1
         }
 
         value = obslib.extract_property(source, "prop2", optional=True)
 
-        assert(value is None)
+        assert value is None
+
+    def test_optional_value2(self):
+        source = {
+            "prop1": 1
+        }
+
+        with pytest.raises(KeyError):
+            value = obslib.extract_property(source, "prop2", optional=False)
+
+            assert value is None
+
+    def test_replace_none1(self):
+        source = {
+            "prop1": None
+        }
+
+        value = obslib.extract_property(source, "prop1", default=5, replace_none=False)
+
+        assert value is None
+
+    def test_replace_none2(self):
+        source = {
+            "prop1": None
+        }
+
+        value = obslib.extract_property(source, "prop1", default=5, replace_none=True)
+
+        assert value == 5
 
