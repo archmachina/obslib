@@ -4,13 +4,13 @@ import pytest
 
 class TestWalkObject:
     def test_primitive(self):
-        assert(obslib.walk_object("test", callback=lambda x: x) == "test")
+        assert obslib.walk_object("test", callback=lambda x: x) == "test"
 
     def test_primitive_update(self):
-        assert(obslib.walk_object("test", callback=lambda x: x + "other", update=True) == "testother")
+        assert obslib.walk_object("test", callback=lambda x: x + "other", update=True) == "testother"
 
     def test_primitive_noupdate(self):
-        assert(obslib.walk_object("test", callback=lambda x: x + "other", update=False) == "test")
+        assert obslib.walk_object("test", callback=lambda x: x + "other", update=False) == "test"
 
     def test_primitive_callback(self):
         ret = { "item": "" }
@@ -19,7 +19,7 @@ class TestWalkObject:
             ret["item"] = x
 
         obslib.walk_object("test", callback=save_obj)
-        assert(ret["item"] == "test")
+        assert ret["item"] == "test"
 
     def test_complex_count_int(self):
         item = {
@@ -43,8 +43,8 @@ class TestWalkObject:
 
         obslib.walk_object(item, callback=sum_add)
 
-        assert(state["sum"] == 26)
-        assert(state["count"] == 7)
+        assert state["sum"] == 26
+        assert state["count"] == 7
 
     def test_complex_update(self):
         item = {
@@ -65,8 +65,8 @@ class TestWalkObject:
 
         item = obslib.walk_object(item, callback=update, update=True)
 
-        assert(item["a"] == 1 and item["b"] == 4 and item["c"] == "testtest")
-        assert(item["d"][0] == 16 and item["d"][1] == 25 and item["d"][2] == "otherother")
+        assert item["a"] == 1 and item["b"] == 4 and item["c"] == "testtest"
+        assert item["d"][0] == 16 and item["d"][1] == 25 and item["d"][2] == "otherother"
 
     def test_complex_update_depth1(self):
         item = {
@@ -87,10 +87,10 @@ class TestWalkObject:
 
         newitem = obslib.walk_object(item, callback=update, update=True, depth=1)
 
-        assert(id(item) == id(newitem))
+        assert id(item) == id(newitem)
 
-        assert(item["a"] == 1 and item["b"] == 4 and item["c"] == "testtest")
-        assert(item["d"][0] == 4 and item["d"][1] == 5 and item["d"][2] == "other")
+        assert item["a"] == 1 and item["b"] == 4 and item["c"] == "testtest"
+        assert item["d"][0] == 4 and item["d"][1] == 5 and item["d"][2] == "other"
 
     def test_complex_update_depth2(self):
         item = {
@@ -111,11 +111,11 @@ class TestWalkObject:
 
         newitem = obslib.walk_object(item, callback=update, update=True, depth=1)
 
-        assert(id(item) == id(newitem))
+        assert id(item) == id(newitem)
 
-        assert(item["a"] == 4)
-        assert(item["b"]["c"] == 3)
-        assert(item["b"]["d"]["e"] == 4)
+        assert item["a"] == 4
+        assert item["b"]["c"] == 3
+        assert item["b"]["d"]["e"] == 4
 
     def test_complex_update_depth3(self):
         item = {
@@ -136,11 +136,11 @@ class TestWalkObject:
 
         newitem = obslib.walk_object(item, callback=update, update=True, depth=2)
 
-        assert(id(item) == id(newitem))
+        assert id(item) == id(newitem)
 
-        assert(item["a"] == 4)
-        assert(item["b"]["c"] == 9)
-        assert(item["b"]["d"]["e"] == 4)
+        assert item["a"] == 4
+        assert item["b"]["c"] == 9
+        assert item["b"]["d"]["e"] == 4
 
     def test_complex_noupdate_depth1(self):
         item = {
@@ -161,9 +161,20 @@ class TestWalkObject:
 
         newitem = obslib.walk_object(item, callback=update, update=False, depth=1)
 
-        assert(id(item) == id(newitem))
+        assert id(item) == id(newitem)
 
-        assert(item["a"] == 2)
-        assert(item["b"]["c"] == 3)
-        assert(item["b"]["d"]["e"] == 4)
+        assert item["a"] == 2
+        assert item["b"]["c"] == 3
+        assert item["b"]["d"]["e"] == 4
+
+    def test_none_root(self):
+        item = None
+
+        def update(x):
+            assert x is None
+
+        newitem = obslib.walk_object(item, callback=update, update=True)
+
+        assert id(newitem) == id(item)
+        assert newitem is None and item is None
 
