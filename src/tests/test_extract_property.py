@@ -36,7 +36,7 @@ class TestExtractProperty:
             "prop1": 1
         }
 
-        value = obslib.extract_property(source, "prop2", optional=True)
+        value = obslib.extract_property(source, "prop2", replace_missing=True)
 
         assert value is None
 
@@ -46,7 +46,7 @@ class TestExtractProperty:
         }
 
         with pytest.raises(KeyError):
-            value = obslib.extract_property(source, "prop2", optional=False)
+            value = obslib.extract_property(source, "prop2", replace_missing=False)
 
             assert value is None
 

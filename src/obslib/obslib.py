@@ -292,21 +292,20 @@ class Session:
 
         return value
 
-def extract_property(source, key, *, default=None, optional=False, replace_none=False, remove=True):
+def extract_property(source, key, *, default=None, replace_missing=False, replace_none=False, remove=True):
     validate(isinstance(source, dict), "Invalid source passed to extract_property. Must be a dict")
     validate(isinstance(key, str), "Invalid key passed to extract_property")
-    validate(isinstance(optional, bool), "Invalid optional parameter to extract_property")
+    validate(isinstance(replace_missing, bool), "Invalid value for replace_missing on extract_property")
     validate(isinstance(replace_none, bool), "Invalid replace_none parameter to extract_property")
     validate(isinstance(remove, bool), "Invalid remove parameter to extract_property")
 
 
     if key not in source:
-        # Raise exception is the key isn't present, but required
-        if not optional:
-            raise KeyError(f'Missing key "{key}" in source or value is null')
+        if replace_missing:
+            return default
 
-        # If the key is not present, return the default
-        return default
+        # No replace for missing value, so raise error
+        raise KeyError(f'Missing key "{key}" in source or value is null')
 
     # Retrieve value
     if remove:
