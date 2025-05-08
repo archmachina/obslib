@@ -88,7 +88,7 @@ class TestSession:
 
         session = obslib.Session({})
 
-        result = session.resolve(source_val, types=(list, type(None)), default=5)
+        result = session.resolve(source_val, types=(list, type(None)), on_none=5)
 
         assert result == 5
 
