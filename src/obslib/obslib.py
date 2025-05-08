@@ -9,6 +9,10 @@ from jinja2.meta import find_undeclared_variables
 
 logger = logging.getLogger(__name__)
 
+class Default:
+    pass
+
+
 def validate(val, message, extype=exception.OBSValidationException):
     """
     Convenience method for raising an exception on validation failure
@@ -292,17 +296,15 @@ class Session:
 
         return value
 
-def extract_property(source, key, *, default=None, replace_missing=False, replace_none=False, remove=True):
+def extract_property(source, key, *, on_missing=Default, on_none=Default, remove=True):
     validate(isinstance(source, dict), "Invalid source passed to extract_property. Must be a dict")
     validate(isinstance(key, str), "Invalid key passed to extract_property")
-    validate(isinstance(replace_missing, bool), "Invalid value for replace_missing on extract_property")
-    validate(isinstance(replace_none, bool), "Invalid replace_none parameter to extract_property")
     validate(isinstance(remove, bool), "Invalid remove parameter to extract_property")
 
 
     if key not in source:
-        if replace_missing:
-            return default
+        if on_missing != Default:
+            return on_missing
 
         # No replace for missing value, so raise error
         raise KeyError(f'Missing key "{key}" in source or value is null')
@@ -313,8 +315,8 @@ def extract_property(source, key, *, default=None, replace_missing=False, replac
     else:
         val = source[key]
 
-    if val is None and replace_none:
-        return default
+    if val is None and on_none != Default:
+        return on_none
 
     return val
 

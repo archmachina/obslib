@@ -36,7 +36,7 @@ class TestExtractProperty:
             "prop1": 1
         }
 
-        value = obslib.extract_property(source, "prop2", replace_missing=True)
+        value = obslib.extract_property(source, "prop2", on_missing=None)
 
         assert value is None
 
@@ -46,25 +46,35 @@ class TestExtractProperty:
         }
 
         with pytest.raises(KeyError):
-            value = obslib.extract_property(source, "prop2", replace_missing=False)
+            value = obslib.extract_property(source, "prop2")
 
             assert value is None
 
-    def test_replace_none1(self):
+    def test_optional_value3(self):
+        source = {
+            "prop1": 1
+        }
+
+        with pytest.raises(KeyError):
+            value = obslib.extract_property(source, "prop2", on_missing=obslib.Default)
+
+            assert value is None
+
+    def test_on_none1(self):
         source = {
             "prop1": None
         }
 
-        value = obslib.extract_property(source, "prop1", default=5, replace_none=False)
+        value = obslib.extract_property(source, "prop1", on_missing=5)
 
         assert value is None
 
-    def test_replace_none2(self):
+    def test_on_none2(self):
         source = {
             "prop1": None
         }
 
-        value = obslib.extract_property(source, "prop1", default=5, replace_none=True)
+        value = obslib.extract_property(source, "prop1", on_missing=6, on_none=5)
 
         assert value == 5
 
