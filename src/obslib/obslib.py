@@ -281,7 +281,7 @@ class Session:
         self._environment = environment
         self.vars = template_vars
 
-    def resolve(self, value, types=None, *, template=True, depth=-1, default=None):
+    def resolve(self, value, types=None, *, template=True, depth=-1, on_none=Default):
         validate(isinstance(template, bool), "Invalid value for template passed to resolve")
         validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
 
@@ -291,8 +291,8 @@ class Session:
         if types is not None:
             value = coerce_value(value, types)
 
-        if value is None:
-            return default
+        if value is None and on_none != Default:
+            return on_none
 
         return value
 
