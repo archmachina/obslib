@@ -92,6 +92,33 @@ class TestSession:
 
         assert result == 5
 
+    def test_ignore_list1(self):
+
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ c }}",
+            "c": "{{ d }}"
+        }
+
+        session = obslib.Session(source)
+
+        with pytest.raises(obslib.OBSResolveException):
+            result = session.resolve("{{ a }}")
+
+    def test_ignore_list2(self):
+
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ c }}",
+            "c": "{{ d }}"
+        }
+
+        session = obslib.Session(source, ignore_list=["c"])
+
+        result = session.resolve("{{ a }}")
+
+        assert result == "{{ d }}"
+
 # TODO
 # Remove eval_vars from tests and rely 'resolve' to call
 #   eval_vars via template_if_string
