@@ -249,6 +249,10 @@ def template_if_string(source, environment:jinja2.Environment, template_vars:dic
     validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to template_string")
     validate(isinstance(template_vars, dict), "Invalid template_vars passed to template_string")
     validate(isinstance(resolve_refs, bool), "Invalid resolve_refs passed to template_if_string")
+    validate(isinstance(ignore_list, (list, type(None))), "Invalid ignore_list passed to template_if_string")
+
+    if ignore_list is None:
+        ignore_list = []
 
     if not isinstance(source, str):
         return source
@@ -277,6 +281,10 @@ def template_if_string(source, environment:jinja2.Environment, template_vars:dic
 
             limited_vars[item] = template_vars[item]
 
+            # Don't check this items references, if it's in the ignore list
+            if item in ignore_list:
+                continue
+
             # Add any references for this var to the queue
             for ref in get_template_refs(limited_vars[item], environment):
                 queue.append(ref)
@@ -304,9 +312,16 @@ def get_template_refs(template_str, environment:jinja2.Environment):
 
 
 class Session:
-    def __init__(self, template_vars:dict, environment:jinja2.Environment=None):
+    def __init__(self, template_vars:dict, environment:jinja2.Environment=None, ignore_list=None):
         validate(isinstance(template_vars, dict), "Invalid template vars passed to Session")
         validate(environment is None or isinstance(environment, jinja2.Environment), "Invalid environment passed to Session")
+        validate(isinstance(ignore_list, (list, type(None))), "Invalid ignore_list passed to Session")
+
+        # Save the ignore list
+        if ignore_list is None:
+            ignore_list = []
+
+        self._ignore_list = ignore_list
 
         # Create a default Jinja2 environment
         if environment is None:
@@ -320,7 +335,7 @@ class Session:
         validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
 
         if template:
-            value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars, resolve_refs=True), update=True, depth=depth)
+            value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars, resolve_refs=True, ignore_list=self._ignore_list), update=True, depth=depth)
 
         if types is not None:
             value = coerce_value(value, types)
