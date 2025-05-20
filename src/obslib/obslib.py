@@ -241,19 +241,53 @@ def eval_vars(source_vars:dict, environment:jinja2.Environment=None, inplace:boo
     return working_vars
 
 
-def template_if_string(source, environment:jinja2.Environment, template_vars:dict):
+def template_if_string(source, environment:jinja2.Environment, template_vars:dict, resolve_refs=False, ignore_list=None):
     """
     Template the source object using the supplied environment and vars, if it is a string
     The templated string is returned, or the original object, if it is not a string
     """
     validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to template_string")
     validate(isinstance(template_vars, dict), "Invalid template_vars passed to template_string")
+    validate(isinstance(resolve_refs, bool), "Invalid resolve_refs passed to template_if_string")
 
     if not isinstance(source, str):
         return source
 
+    source_vars = template_vars
+    if resolve_refs:
+
+        # We'll create a new dictionary limited to the vars that are
+        # directly or indirectly referenced by the source string to avoid
+        # evaluating other vars unnecessarily
+        limited_vars = dict()
+
+        # Get a list of the references the source string makes
+        queue = list(get_template_refs(source, environment))
+
+        while len(queue) > 0:
+            item = queue.pop(0)
+
+            # Have we already seen/processed this var?
+            if item in limited_vars:
+                continue
+
+            # Make sure we have this var in the provided var list
+            if item not in template_vars:
+                raise exception.OBSResolveException(f"Reference to unknown variable: {item}")
+
+            limited_vars[item] = template_vars[item]
+
+            # Add any references for this var to the queue
+            for ref in get_template_refs(limited_vars[item], environment):
+                queue.append(ref)
+
+        # Now we have a dictionary of the reachable vars from the original source
+        # string
+        # Flatten/resolve the vars
+        source_vars = eval_vars(limited_vars, environment, ignore_list=ignore_list)
+
     template = environment.from_string(source)
-    return template.render(template_vars)
+    return template.render(source_vars)
 
 
 def get_template_refs(template_str, environment:jinja2.Environment):
@@ -286,7 +320,7 @@ class Session:
         validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
 
         if template:
-            value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars), update=True, depth=depth)
+            value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars, resolve_refs=True), update=True, depth=depth)
 
         if types is not None:
             value = coerce_value(value, types)
