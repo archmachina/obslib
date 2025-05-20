@@ -32,7 +32,7 @@ class TestSession:
         assert(session.resolve(value, float) == 3.5)
 
     def test_resolve3(self):
-        with pytest.raises(jinja2.exceptions.UndefinedError):
+        with pytest.raises(obslib.OBSResolveException):
             source_vars = {
                 "a": {
                     "sub": 7
@@ -91,4 +91,8 @@ class TestSession:
         result = session.resolve(source_val, types=(list, type(None)), on_none=5)
 
         assert result == 5
+
+# TODO
+# Remove eval_vars from tests and rely 'resolve' to call
+#   eval_vars via template_if_string
 
