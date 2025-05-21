@@ -1,0 +1,11 @@
+---
+version: "2alpha"
+
+vars:
+  github_owner: archmachina
+  github_repo: obslib
+
+include:
+  - .bdast/common.yaml
+  - .bdast/python.yaml
+
