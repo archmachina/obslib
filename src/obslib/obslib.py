@@ -163,16 +163,57 @@ def parse_bool(obj) -> bool:
     raise exception.OBSConversionException(f"Unparseable value ({obj}) passed to parse_bool")
 
 
-def eval_vars(source_vars:dict, environment:jinja2.Environment=None, inplace:bool=False, ignore_list:list=None):
+def find_reachable_vars(source, environment, template_vars):
+    """
+    Find all of the reachable vars in template_vars based on the template string 'source'.
+    Any vars referenced by the source string are evaluated and their references are included,
+    until a full list of references have been identified
+    A reduced set of the original template vars is returned, limited to the vars reachable from the source string
+    """
+
+    # Validate incoming parameters
+    validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to find_reachable_vars")
+    validate(isinstance(template_vars, dict), "Invalid template vars passed to find_reachable_vars")
+
+    found_vars = dict()
+
+    if not isinstance(source, str):
+        return found_vars
+
+    # Get a list of the references the source string makes
+    queue = list(get_template_refs(source, environment))
+
+    while len(queue) > 0:
+        item = queue.pop(0)
+
+        # Have we already seen this var?
+        if item in found_vars:
+            continue
+
+        # Check if this is a known var
+        if item not in template_vars:
+            continue
+
+        found_vars[item] = template_vars[item]
+
+        # Add any references for this var to the queue
+        for ref in get_template_refs(found_vars[item], environment):
+            queue.append(ref)
+
+    return found_vars
+
+
+def eval_vars(source_vars:dict, environment:jinja2.Environment=None, ignore_list:list=None):
     """
     Performs templating on the source dictionary and attempts to resolve variable references
     taking in to account nested references.
     """
-    validate(isinstance(source_vars, dict), "Invalid source vars provided to resolve_refs")
-    validate(isinstance(inplace, bool), "Invalid inplace var provided to resolve_refs")
+
+    # Validate incoming parameters
+    validate(isinstance(source_vars, dict), "Invalid source vars provided to eval_vars")
+    validate(isinstance(environment, (jinja2.Environment, type(None))), "Invalid environment passed to eval_vars")
     validate(ignore_list is None or (all(isinstance(x, str) for x in ignore_list)),
-        "Invalid ignore_list provided to resolve_refs")
-    validate(environment is None or isinstance(environment, jinja2.Environment), "Invalid environment passed to eval_vars")
+        "Invalid ignore_list provided to eval_vars")
 
     # Create a default Jinja2 environment
     if environment is None:
@@ -181,121 +222,99 @@ def eval_vars(source_vars:dict, environment:jinja2.Environment=None, inplace:boo
     if ignore_list is None:
         ignore_list = []
 
-    var_map = {}
-
-    working_vars = source_vars
-    if not inplace:
-        working_vars = copy.copy(source_vars)
+    # callback to add dependencies, but only if they appear in the var ist
+    def add_template_ref(deps, working_vars, refs):
+        for ref in refs:
+            if ref in working_vars:
+                deps.add(ref)
 
     # Create a map of keys to the vars the value references
-    for key in working_vars:
-        deps = set()
+    dep_map = {}
+    for key in source_vars:
+        dep_map[key] = set()
+
+        if key in ignore_list:
+            # If the item is in the ignore list, ignore any dependencies it may have
+            # and don't treat it as a template. It will essentially have an empty dependency list
+            continue
 
         # Recursively walk through all properties for the object and calculate a set
-        # of dependencies
-        # It's possible that some dependencies could be resolvable, but will show as unresolvable here:
-        # If a.b depends on x.y, and x.x depends on a.a, it could, in theory, be resolved, but this will
-        # show it as unresolvable.
-        # Since we don't have access to that info from jinja2 easily, it would be difficult to calculate
-        # and offers little value being a small edge case.
-        # Skip calculating dependencies, if the key is in the ignore list, meaning it has no dependencies
-        if key not in ignore_list:
-            walk_object(working_vars[key], lambda x: deps.update(get_template_refs(x, environment)))
+        # of dependencies. Note: The object may not be a string, but may be a complex object
+        # containing template strings.
+        # If there are two complex objects referencing sub-properties of each other, we may not be able to
+        # resolve this
+        # Only add the dependency if we have it in our working vars, otherwise, we should leave it
+        # to jinja2 to process
+        walk_object(source_vars[key], lambda x: add_template_ref(dep_map[key], source_vars, get_template_refs(x, environment)))
 
-        var_map[key] = deps
+    # Process each of the dependency sets in var map
+    result_vars = {}
+    while len(dep_map) > 0:
 
-    # Loop while there are values left in var_map, which represents the key/value
-    # and the vars it depends on
-    while len(var_map.keys()) > 0:
-        process_list = []
+        # Get a list of the vars that do no have any dependencies and
+        # we'll resolve these
+        process_list = [x for x in dep_map.keys() if len(dep_map[x]) == 0]
 
-        # Add any keys to the process list that don't have any dependencies left
-        for key in var_map:
-            if len(var_map[key]) == 0:
-                process_list.append(key)
-
-        # Remove the items we're processing from the var map
-        for key in process_list:
-            var_map.pop(key)
-
-        # Fail if there is nothing to process
-        if len(process_list) < 1:
-            raise exception.OBSResolveException(
-                f"Circular or unresolvable variable references: vars {var_map}"
-            )
+        if len(process_list) == 0:
+            # All items in the dep_map have vars with references to other
+            # vars in the var map (unknown vars are not added as dependencies)
+            # This is unresolvable and attempting to resolve the templates will
+            # result in template strings in the output.
+            #
+            # Example from an eval_vars version that attempts to resolve anyway:
+            # >>> test
+            # {'a': '{{ b }}', 'b': '{{ a }}'}
+            # >> obslib.eval_vars(test)
+            # {'a': '{{ a }}', 'b': '{{ a }}'}
+            #
+            # Best to raise an unresolvable exception and let the user restructure
+            # the var references
+            raise exception.OBSResolveException(f"Unresolvable references in var list: {dep_map}")
 
         for prockey in process_list:
-            if prockey not in ignore_list:
-                # Template the variable and update 'new_vars', if it's not in the ignore_list
-                working_vars[prockey] = walk_object(
-                    working_vars[prockey],
-                    lambda x: template_if_string(x, environment, working_vars),
-                    update=True
-                )
+
+            # Remove this key from further processing
+            dep_map.pop(prockey)
 
             # Remove the variable as a dependency for all other variables
-            for key in var_map:
-                if prockey in var_map[key]:
-                    var_map[key].remove(prockey)
+            for key in dep_map:
+                if prockey in dep_map[key]:
+                    dep_map[key].remove(prockey)
 
-    return working_vars
+            # Put a copy of the var in to the result vars
+            result_vars[prockey] = copy.deepcopy(source_vars[prockey])
+
+            # If it's in the ignore list, don't evaluate it using jinja2
+            if prockey in ignore_list:
+                continue
+
+            # Replace the object with a resolved version of itself. If this
+            # is a complex object or collection, just string properties or members
+            # will be replaced
+            result_vars[prockey] = walk_object(
+                result_vars[prockey],
+                lambda x: template_if_string(x, environment, result_vars),
+                update=True
+            )
+
+    return result_vars
 
 
-def template_if_string(source, environment:jinja2.Environment, template_vars:dict, resolve_refs=False, ignore_list=None):
+def template_if_string(source, environment:jinja2.Environment, template_vars:dict):
     """
     Template the source object using the supplied environment and vars, if it is a string
     The templated string is returned, or the original object, if it is not a string
     """
+
+    # Validate incoming parameters
     validate(isinstance(environment, jinja2.Environment), "Invalid environment passed to template_string")
     validate(isinstance(template_vars, dict), "Invalid template_vars passed to template_string")
-    validate(isinstance(resolve_refs, bool), "Invalid resolve_refs passed to template_if_string")
-    validate(isinstance(ignore_list, (list, type(None))), "Invalid ignore_list passed to template_if_string")
-
-    if ignore_list is None:
-        ignore_list = []
 
     if not isinstance(source, str):
         return source
 
-    source_vars = template_vars
-    if resolve_refs:
-
-        # We'll create a new dictionary limited to the vars that are
-        # directly or indirectly referenced by the source string to avoid
-        # evaluating other vars unnecessarily
-        limited_vars = dict()
-
-        # Get a list of the references the source string makes
-        queue = list(get_template_refs(source, environment))
-
-        while len(queue) > 0:
-            item = queue.pop(0)
-
-            # Have we already seen/processed this var?
-            if item in limited_vars:
-                continue
-
-            # Make sure we have this var in the provided var list
-            if item not in template_vars:
-                raise exception.OBSResolveException(f"Reference to unknown variable: {item}")
-
-            limited_vars[item] = template_vars[item]
-
-            # Don't check this items references, if it's in the ignore list
-            if item in ignore_list:
-                continue
-
-            # Add any references for this var to the queue
-            for ref in get_template_refs(limited_vars[item], environment):
-                queue.append(ref)
-
-        # Now we have a dictionary of the reachable vars from the original source
-        # string
-        # Flatten/resolve the vars
-        source_vars = eval_vars(limited_vars, environment, ignore_list=ignore_list)
-
     template = environment.from_string(source)
-    return template.render(source_vars)
+    return template.render(template_vars)
 
 
 def get_template_refs(template_str, environment:jinja2.Environment):
@@ -331,11 +350,30 @@ class Session:
         self.vars = template_vars
 
     def resolve(self, value, types=None, *, template=True, depth=-1, on_none=Default):
+
+        # Validate incoming parameters
         validate(isinstance(template, bool), "Invalid value for template passed to resolve")
         validate(isinstance(depth, int), "Invalid value for depth passed to resolve")
 
+
         if template:
-            value = walk_object(value, lambda x: template_if_string(x, self._environment, self.vars, resolve_refs=True, ignore_list=self._ignore_list), update=True, depth=depth)
+            def resolve_string(source, environ, template_vars):
+                if not isinstance(source, str):
+                    # template_if_string would handle this, but we'll avoid calculating vars
+                    # unnecessarily if it is not a string
+                    return source
+
+                # Calculate a limited version of the vars from template_vars
+                limited_vars = find_reachable_vars(source, environ, template_vars)
+
+                # Evaluate the limited scope vars - references to unknown vars would be handled by jinja2,
+                # while circular references will cause an obslib exception
+                limited_vars = eval_vars(limited_vars, environ, ignore_list=self._ignore_list)
+
+                # return the templated string
+                return template_if_string(source, environ, limited_vars)
+
+            value = walk_object(value, lambda x: resolve_string(x, self._environment, self.vars), update=True, depth=depth)
 
         if types is not None:
             value = coerce_value(value, types)

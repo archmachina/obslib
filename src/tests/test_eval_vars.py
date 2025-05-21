@@ -46,9 +46,9 @@ class TestEvalVars:
             "b": "{{ a }}"
         }
 
-        with pytest.raises(obslib.OBSResolveException):
-            environ = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
+        environ = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 
+        with pytest.raises(obslib.OBSResolveException):
             result = obslib.eval_vars(var_list, environ)
 
     def test_unresolvable2(self):
@@ -58,9 +58,8 @@ class TestEvalVars:
             "b": "{{ z }}{{ a }}"
         }
 
+        environ = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
         with pytest.raises(obslib.OBSResolveException):
-            environ = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
-
             result = obslib.eval_vars(var_list, environ)
 
     def test_unresolvable3(self):
@@ -73,8 +72,8 @@ class TestEvalVars:
             }
         }
 
-        with pytest.raises(obslib.OBSResolveException):
-            environ = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
+        environ = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 
+        with pytest.raises(obslib.OBSResolveException):
             result = obslib.eval_vars(var_list, environ)
 
