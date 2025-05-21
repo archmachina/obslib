@@ -32,15 +32,16 @@ class TestSession:
         assert(session.resolve(value, float) == 3.5)
 
     def test_resolve3(self):
-        with pytest.raises(obslib.OBSResolveException):
-            source_vars = {
-                "a": {
-                    "sub": 7
-                },
-                "b": 2
-            }
+        source_vars = {
+            "a": {
+                "sub": 7
+            },
+            "b": 2
+        }
 
-            session = obslib.Session(obslib.eval_vars(source_vars))
+        session = obslib.Session(obslib.eval_vars(source_vars))
+
+        with pytest.raises(jinja2.exceptions.UndefinedError):
             value = session.resolve("{{ a.sub / c }}")
 
     def test_resolve4(self):
@@ -102,7 +103,7 @@ class TestSession:
 
         session = obslib.Session(source)
 
-        with pytest.raises(obslib.OBSResolveException):
+        with pytest.raises(jinja2.exceptions.UndefinedError):
             result = session.resolve("{{ a }}")
 
     def test_ignore_list2(self):
@@ -118,6 +119,72 @@ class TestSession:
         result = session.resolve("{{ a }}")
 
         assert result == "{{ d }}"
+
+    def test_resolve_undefined1(self):
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ c }}"
+        }
+
+        session = obslib.Session(source)
+
+        with pytest.raises(jinja2.exceptions.UndefinedError):
+            session.resolve("{{ a }}")
+
+    def test_resolve_undefined2(self):
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ c|default(3) }}"
+        }
+
+        session = obslib.Session(source)
+
+        result = session.resolve("{{ a }}")
+
+        assert result == "3"
+        assert isinstance(result, str)
+
+    def test_resolve_undefined3(self):
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ c|default(3) }}"
+        }
+
+        session = obslib.Session(source)
+
+        result = session.resolve("{{ f|default('xx') }}")
+
+        assert result == "xx"
+        assert isinstance(result, str)
+
+    def test_resolve_circular1(self):
+        # The circular reference between a and b should be ignored as
+        # neither are referenced by resolve
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ a }}"
+        }
+
+        session = obslib.Session(source)
+
+        result = session.resolve("{{ f|default('xx') }}")
+
+        assert result == "xx"
+        assert isinstance(result, str)
+
+    def test_resolve_circular2(self):
+        # The circular reference between a and b should trigger an
+        # error as they are referenced by resolve
+        source = {
+            "a": "{{ b }}",
+            "b": "{{ a }}"
+        }
+
+        session = obslib.Session(source)
+
+        with pytest.raises(obslib.OBSResolveException):
+            result = session.resolve("{{ a|default('xx') }}")
+
 
 # TODO
 # Remove eval_vars from tests and rely 'resolve' to call
