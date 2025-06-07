@@ -321,11 +321,17 @@ def get_template_refs(template_str, environment:jinja2.Environment):
     """
     Return a set of the variable references from the template string
     """
-    if not isinstance(template_str, str):
-        return set()
+    deps = set()
 
-    ast = environment.parse(template_str)
-    deps = set(find_undeclared_variables(ast))
+    def store_refs(item):
+        if not isinstance(item, str):
+            return
+
+        ast = environment.parse(template_str)
+        new_deps = set(find_undeclared_variables(ast))
+        deps.update(new_deps)
+
+    walk_object(template_str, lambda x: store_refs(x))
 
     return deps
 

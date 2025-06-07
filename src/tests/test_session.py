@@ -93,6 +93,48 @@ class TestSession:
 
         assert result == 5
 
+    def test_resolve8(self):
+        # This tests the ability to find var references in vars
+        # that are complex types, rather than a top level string
+        source_vars = {
+            "a": {
+                "test": 1
+            },
+            "b": [
+                "first {{ a.test }}",
+                "second {{ a.test }}"
+            ]
+        }
+
+        session = obslib.Session(source_vars)
+
+        result = session.resolve("{% for item in b %}{{ item }}{% endfor %}", types=str)
+
+        assert isinstance(result, str)
+        assert result == "first 1second 1"
+
+    def test_resolve9(self):
+        # This tests the ability to find var references in vars
+        # that are complex types, rather than a top level string
+        source_vars = {
+            "a": {
+                "test": 1
+            },
+            "b": [
+                "first {{ a.test }}",
+                "second {{ a.test }}"
+            ]
+        }
+
+        session = obslib.Session(source_vars)
+
+        result = session.resolve("{{ b }}", types=list)
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0] == "first 1"
+        assert result[1] == "second 1"
+
     def test_ignore_list1(self):
 
         source = {
